@@ -27,7 +27,7 @@ fix_perms() {
 
 # prepare the tarball to restore userdata
 prepare_tarball() {
-  adb wait-for-device shell 'su -c "cat /data/system/packages.list"' > packages.list &&  { sudo rm -rf data; sudo tar -xf data_stripped_large.tar data/system/users data/system_ce data/system_de data/user_de data/data data/media/0 data/misc/wifi data/misc/dhcp data/misc/vpn data/misc/bluetooth data/misc/bluedroid data/misc/radio data/misc/profiles; } && fix_perms data user_de/0 misc/profiles/cur/0 misc/profiles/ref && sudo rm data_restore.tar && sudo tar -cf data_restore.tar data
+  adb wait-for-device shell 'su -c "cat /data/system/packages.list"' > packages.list &&  { sudo rm -rf data; pv data.tar | sudo tar -x data/system/users data/system_ce data/system_de data/user_de data/data data/media/0 data/misc/wifi data/misc/dhcp data/misc/vpn data/misc/bluetooth data/misc/bluedroid data/misc/radio data/misc/profiles; } && fix_perms data user_de/0 misc/profiles/cur/0 misc/profiles/ref && sudo rm data_restore.tar && sudo tar -cf data_restore.tar data
 }
 
 # ADB: prepare to receive tar data
