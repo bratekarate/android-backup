@@ -9,8 +9,7 @@ install_apks() {
 install_magisk() {
   adb install apks/com.topjohnwu.magisk.apk &&
   adb push Magisk-v.20.4.zip /sdcard/Download &&
-  adb shell 'su -c "cd /sdcard/Download && mkdir -p tmp_magisk && unzip -d tmp_magisk Magisk-v20.4.zip && mkdir -p tmp_install && cp tmp_magisk/META-INF/com/google/android/update* tmp_install && (cd tmp_install && cp ../Magisk-v20.4.zip install.zip && BOOTMODE=true sh update-binary dummy 1 install.zip); rm -r tmp_install tmp_magisk"' &&
-  adb reboot
+  adb shell 'su -c "cd /sdcard/Download && mkdir -p tmp_magisk && unzip -d tmp_magisk Magisk-v20.4.zip && mkdir -p tmp_install && cp tmp_magisk/META-INF/com/google/android/update* tmp_install && (cd tmp_install && cp ../Magisk-v20.4.zip install.zip && BOOTMODE=true sh update-binary dummy 1 install.zip); rm -r tmp_install tmp_magisk"'
 }
 
 # old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
