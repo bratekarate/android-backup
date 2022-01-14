@@ -2,14 +2,36 @@
 
 # install apks from backup. Let it run in the background with other shell or job management
 install_apks() {
-  (cd apks && find . ! -name . -prune -name '*.apk' | while IFS= read -r L; do adb wait-for-device install "$L" & done) && trap 'pkill -f "adb wait-for-device install ";trap - INT' INT && { while pgrep -f 'adb wait-for-device install ' >/dev/null; do sleep 1; done; trap - INT; }
+  (
+    cd apks && find . ! -name . -prune -name '*.apk' |
+      while IFS= read -r L; do
+        adb wait-for-device install "$L" &
+      done
+  ) &&
+    # TODO: trap makes sense? noticed some issues with SIGINT when run in background.
+    trap 'pkill -f "adb wait-for-device install ";trap - INT' INT && {
+    while pgrep -f 'adb wait-for-device install ' >/dev/null; do sleep 1; done
+    trap - INT
+  }
 }
 
 # install magisk manually and reboot
 install_magisk() {
   adb wait-for-device install apks/com.topjohnwu.magisk.apk &&
-  adb wait-for-device push Magisk-v20.4.zip /sdcard/Download &&
-  adb wait-for-device shell 'su -c "cd /sdcard/Download && mkdir -p tmp_magisk && unzip -d tmp_magisk Magisk-v20.4.zip && mkdir -p tmp_install && cp tmp_magisk/META-INF/com/google/android/update* tmp_install && (cd tmp_install && cp ../Magisk-v20.4.zip install.zip && BOOTMODE=true sh update-binary dummy 1 install.zip); rm -r tmp_install tmp_magisk"'
+    adb wait-for-device push Magisk-v20.4.zip /sdcard/Download &&
+    adb wait-for-device shell '
+su -c "cd /sdcard/Download &&
+  mkdir -p tmp_magisk &&
+  unzip -d tmp_magisk Magisk-v20.4.zip &&
+  mkdir -p tmp_install &&
+  cp tmp_magisk/META-INF/com/google/android/update* tmp_install &&
+  (
+     cd tmp_install &&
+       cp ../Magisk-v20.4.zip install.zip &&
+       BOOTMODE=true sh update-binary dummy 1 install.zip
+  )
+  rm -r tmp_install tmp_magisk
+"'
 }
 
 # old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
@@ -18,23 +40,45 @@ install_magisk() {
 
 fix_perms() {
   for DIR in "$@"; do
-    (cd data/"$DIR" && sudo find . ! -name . -prune) | sed 's|^./\(.*\)|\1|g' | while IFS= read -r L; do
-      APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
-      sudo chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
-    done
+    (cd data/"$DIR" && sudo find . ! -name . -prune) |
+      sed 's|^./\(.*\)|\1|g' |
+      while IFS= read -r L; do
+        APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
+        sudo chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
+      done
   done
 }
 
 # prepare the tarball to restore userdata
 prepare_tarball() {
-  adb wait-for-device shell 'su -c "cat /data/system/packages.list"' > packages.list &&  { sudo rm -rf data; pv data.tar | sudo tar -x data/system/users data/system_ce data/system_de data/user_de data/data data/media/0 data/misc/wifi data/misc/dhcp data/misc/vpn data/misc/bluetooth data/misc/bluedroid data/misc/radio data/misc/profiles; } && fix_perms data user_de/0 misc/profiles/cur/0 misc/profiles/ref && sudo rm data_restore.tar && sudo tar -cf data_restore.tar data
+  adb wait-for-device shell \
+    'su -c "cat /data/system/packages.list"' >packages.list && {
+    sudo rm -rf data
+    pv data.tar | sudo tar -x \
+      data/system/users \
+      data/system_ce \
+      data/system_de \
+      data/user_de \
+      data/data \
+      data/media/0 \
+      data/misc/wifi \
+      data/misc/dhcp \
+      data/misc/vpn \
+      data/misc/bluetooth \
+      data/misc/bluedroid \
+      data/misc/radio \
+      data/misc/profiles
+  } &&
+    fix_perms data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
+    sudo rm data_restore.tar &&
+    sudo tar -cf data_restore.tar data
 }
 
 # ADB: prepare to receive tar data
 receive_restore_backup() {
-# setup port forwarding for netcat
-adb wait-for-device forward tcp:5555 tcp:5555
-adb wait-for-device shell 'su -c "ASH_STANDALONE=1 /data/adb/magisk/busybox sh -c \"
+  # setup port forwarding for netcat
+  adb wait-for-device forward tcp:5555 tcp:5555
+  adb wait-for-device shell 'su -c "ASH_STANDALONE=1 /data/adb/magisk/busybox sh -c \"
 killall nc
 rm /cache/fifo 2>/dev/null
 mkfifo /cache/fifo
