@@ -1,5 +1,5 @@
 #!/bin/sh
-#
+
 cd /media/storage_ssd2/honor9_backups/2022-01-12/ &&
 . scripts/install_utils.sh &&
 install_apks > apk_out.log &
