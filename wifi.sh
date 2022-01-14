@@ -13,6 +13,10 @@ install_magisk() {
   adb reboot
 }
 
+# old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
+# TODO: DOES NOT WORK IF NO CHANNEL IS CONFIGURED!
+#adb shell "su -c \"sed -i 's|\(custom_channel.*>\).*\(<\)|\1https://raw.githubusercontent.com/topjohnwu/magisk_files/63555595ffa9b079f3a411dd2c00a80a3d985ccc/stable.json\2|g' /data/user_de/0/com.topjohnwu.magisk/shared_prefs/com.topjohnwu.magisk_preferences.xml\""
+
 fix_perms() {
   for DIR in "$@"; do
     (cd data/"$DIR" && sudo find . ! -name . -prune) | sed 's|^./\(.*\)|\1|g' | while IFS= read -r L; do
