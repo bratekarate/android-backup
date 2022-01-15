@@ -18,7 +18,9 @@ install_apks() {
 # install magisk manually and reboot
 install_magisk() {
   adb wait-for-device install apks/com.topjohnwu.magisk.apk &&
-    adb wait-for-device push Magisk-v20.4.zip /sdcard/Download &&
+    for MOD in ../assets/*.zip; do
+      adb wait-for-device push "$MOD" /sdcard/Download
+    done &&
     adb wait-for-device shell '
 su -c "cd /sdcard/Download &&
   mkdir -p tmp_magisk &&
@@ -30,7 +32,7 @@ su -c "cd /sdcard/Download &&
        cp ../Magisk-v20.4.zip install.zip &&
        BOOTMODE=true sh update-binary dummy 1 install.zip
   )
-  rm -r tmp_install tmp_magisk
+rm -r tmp_install tmp_magisk
 "'
 }
 
@@ -97,7 +99,10 @@ send_restore_backup() {
 
 # allow fluidng to hide the navbar
 post_install_permissions() {
-  adb wait-for-device shell pm grant com.fb.fluid android.permission.WRITE_SECURE_SETTINGS
+  adb wait-for-device shell "
+settings put global navigationbar_is_min 1
+wm overscan 0,0,0,-140
+"
 }
 
 # perform other permission settings, or similar
