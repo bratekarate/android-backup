@@ -3,22 +3,17 @@
 # install apks from backup. Let it run in the background with other shell or job management
 install_apks() {
   (
-    cd apks && find . ! -name . -prune -name '*.apk' |
+    cd "$1" && find . ! -name . -prune -name '*.apk' |
       while IFS= read -r L; do
-        adb wait-for-device install "$L" &
+        adb wait-for-device install "$L"
       done
-  ) &&
-    # TODO: trap makes sense? noticed some issues with SIGINT when run in background.
-    trap 'pkill -f "adb wait-for-device install ";trap - INT' INT && {
-    while pgrep -f 'adb wait-for-device install ' >/dev/null; do sleep 1; done
-    trap - INT
-  }
+  )
 }
 
 # install magisk manually and reboot
 install_magisk() {
-  adb wait-for-device install apks/com.topjohnwu.magisk.apk &&
-    (cd ../assets && for MOD in *.zip; do
+  adb wait-for-device install "$1" &&
+    (cd "$2" && for MOD in *.zip; do
       adb wait-for-device push "$MOD" /sdcard/Download &&
         adb wait-for-device shell '
 su -c "cd /sdcard/Download &&
@@ -33,7 +28,7 @@ su -c "cd /sdcard/Download &&
   )
   rm -r tmp_install tmp_magisk
 "'
-done)
+    done)
 }
 
 # old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
@@ -41,39 +36,47 @@ done)
 #adb wait-for-device shell "su -c \"sed -i 's|\(custom_channel.*>\).*\(<\)|\1https://raw.githubusercontent.com/topjohnwu/magisk_files/63555595ffa9b079f3a411dd2c00a80a3d985ccc/stable.json\2|g' /data/user_de/0/com.topjohnwu.magisk/shared_prefs/com.topjohnwu.magisk_preferences.xml\""
 
 fix_perms() {
-  for DIR in "$@"; do
-    (cd data/"$DIR" && sudo find . ! -name . -prune) |
-      sed 's|^./\(.*\)|\1|g' |
-      while IFS= read -r L; do
-        APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
-        sudo chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
+  (
+    cd "$(dirname "$1")" && shift &&
+      for DIR in "$@"; do
+        (cd data/"$DIR" && sudo find . ! -name . -prune) |
+          sed 's|^./\(.*\)|\1|g' |
+          while IFS= read -r L; do
+            APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
+            sudo chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
+          done
       done
-  done
+  )
 }
 
 # prepare the tarball to restore userdata
 prepare_tarball() {
-  adb wait-for-device shell \
-    'su -c "cat /data/system/packages.list"' >packages.list && {
-    sudo rm -rf data
-    pv data.tar | sudo tar -x \
-      data/system/users \
-      data/system_ce \
-      data/system_de \
-      data/user_de \
-      data/data \
-      data/media/0 \
-      data/misc/wifi \
-      data/misc/dhcp \
-      data/misc/vpn \
-      data/misc/bluetooth \
-      data/misc/bluedroid \
-      data/misc/radio \
-      data/misc/profiles
-  } &&
-    fix_perms data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
-    sudo rm data_restore.tar &&
-    sudo tar -cf data_restore.tar data
+  (
+    cd "$(dirname "$1")" &&
+      adb wait-for-device shell \
+        'su -c "cat /data/system/packages.list"' >packages.list && {
+      sudo rm -r data
+      echo "extracting tar '$1'" >&2
+      pv "$1" | sudo tar -x \
+        data/system/users \
+        data/system_ce \
+        data/system_de \
+        data/user_de \
+        data/data \
+        data/media/0 \
+        data/misc/wifi \
+        data/misc/dhcp \
+        data/misc/vpn \
+        data/misc/bluetooth \
+        data/misc/bluedroid \
+        data/misc/radio \
+        data/misc/profiles
+    } &&
+      fix_perms data data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
+      sudo rm "$2" &&
+      echo "building tar '$2'" >&2 &&
+      sudo tar -c data | pv -s "$(du -sb data | cut -f1)" > "$2" 
+  )
 }
 
 # ADB: prepare to receive tar data
@@ -91,7 +94,7 @@ tail -f /dev/null | nc -lp 5555  >/cache/fifo &
 
 # PC: send tar data (tested with bsd-netcat)
 send_restore_backup() {
-  pv data_restore.tar | nc -q5 localhost 5555
+  pv "$1" | nc -q5 localhost 5555
 }
 
 # reboot the device
