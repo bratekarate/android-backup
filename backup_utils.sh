@@ -26,7 +26,21 @@ forward_adb() {
   adb wait-for-device forward tcp:5555 tcp:5555
 }
 
-send_backup() {
+backup_tar() {
+  (
+  trap exit INT HUP TERM
+  trap 'cat /tmp/send_backup*.pid | xargs kill -9 2>/dev/null; cat /tmp/send_backup_*.stderr >&2; rm /tmp/send_backup_*.*' EXIT
+  send_backup_fifo > /tmp/send_backup_fifo.stdout 2>/tmp/send_backup_fifo.stderr &
+  echo $! >/tmp/send_backup_fifo.pid
+  sleep 1
+  send_backup_nc > /tmp/send_backup_nc.stdout 2> /tmp/send_backup_nc.stderr &
+  sleep 1
+  echo $! >/tmp/send_backup_nc.pid
+  receive_backup
+)
+}
+
+send_backup_fifo() {
 #   forward_adb
 #   exec_standalone "
 # $PREPARE
@@ -35,19 +49,22 @@ send_backup() {
 # "
 adb forward tcp:5555 tcp:5555
 adb shell 'su -c "ASH_STANDALONE=1 /data/adb/magisk/busybox sh -c \"
-mkfifo /cache/myfifo
-tar -cvf /cache/myfifo data/data/com.topjohnwu.magisk
+killall nc 2>/dev/null
+rm /cache/fifo 2>/dev/null
+mkfifo /cache/fifo
+tar -cvf /cache/fifo data/data/com.topjohnwu.magisk
 \""'
 }
 
-do_send_backup() {
+send_backup_nc() {
 #   forward_adb
 #   exec_standalone "
 # $WITH_NC gzip -c /cache/fifo
 # "
 adb forward tcp:5555 tcp:5555
 adb shell 'su -c "ASH_STANDALONE=1 /data/adb/magisk/busybox sh -c \"
-nc -l -p 5555 -e cat /cache/myfifo
+nc -l -p 5555 -e cat /cache/fifo
+rm /cache/fifo 2>/dev/null
 \""'
 }
 
