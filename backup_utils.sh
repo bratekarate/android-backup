@@ -19,21 +19,21 @@ forward_adb() {
 }
 
 cleanup_postbackup() {
-  cat /tmp/send_backup*.pid | xargs kill -9 2>/dev/null
-  cat /tmp/send_backup_*.stderr >&2
-  rm /tmp/send_backup_*.*
+  cat /tmp/send_backup$$*.pid | xargs kill -9 2>/dev/null
+  cat /tmp/send_backup$$_*.stderr >&2
+  rm /tmp/send_backup$$_*.*
 }
 
 backup() {
   (
     trap exit INT HUP TERM
     trap 'cleanup_postbackup' EXIT
-    send_backup_fifo "$1" "$2" >/tmp/send_backup_fifo.stdout 2>/tmp/send_backup_fifo.stderr &
-    echo $! >/tmp/send_backup_fifo.pid
+    send_backup_fifo "$1" "$2" >/tmp/send_backup$$_fifo.stdout 2>/tmp/send_backup$$_fifo.stderr &
+    echo $! >/tmp/send_backup$$_fifo.pid
     sleep 1
-    send_backup_nc >/tmp/send_backup_nc.stdout 2>/tmp/send_backup_nc.stderr &
+    send_backup_nc >/tmp/send_backup$$_nc.stdout 2>/tmp/send_backup$$_nc.stderr &
     sleep 1
-    echo $! >/tmp/send_backup_nc.pid
+    echo $! >/tmp/send_backup$$_nc.pid
     receive_backup "$1" "$2"
   )
 }
