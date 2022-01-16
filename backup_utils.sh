@@ -24,7 +24,7 @@ cleanup_postbackup() {
   rm /tmp/send_backup_*.*
 }
 
-backup_tar() {
+backup() {
   (
     trap exit INT HUP TERM
     trap 'cleanup_postbackup' EXIT
@@ -64,7 +64,7 @@ rm /cache/fifo 2>/dev/null
 receive_backup() {
   if [ "$2" = 'RAW' ]; then
     SIZE=$(adb shell 'su -c "awk '\''/'"$1"'/{print \$3 * 1024}'\'' < /proc/partitions"')
-    FNAME=data.img.gz
+    FNAME="$1".img.gz
   else
     SIZE=$(echo "$(adb shell su -c 'du -s '"$1"'' | cut -f1) * 1024" | bc)
     FNAME=data.tar.gz
