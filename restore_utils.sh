@@ -13,21 +13,18 @@ install_apks() {
 # install magisk manually and reboot
 install_magisk() {
   adb wait-for-device install "$1" &&
-    (cd "$2" && for MOD in *.zip; do
+    # TODO: prevent duplicate magisk installation. works for now.
+    (cd "$2" && for MOD in Magisk-v20.4.zip *.zip; do
       adb wait-for-device push "$MOD" /sdcard/Download &&
         adb wait-for-device shell '
-su -c "cd /sdcard/Download &&
-  mkdir -p tmp_magisk &&
-  unzip -d tmp_magisk '"$MOD"' &&
-  mkdir -p tmp_install &&
-  cp tmp_magisk/META-INF/com/google/android/update* tmp_install &&
-  (
-     cd tmp_install &&
-       cp ../'"$MOD"' install.zip &&
-       BOOTMODE=true sh update-binary dummy 1 install.zip
-  )
-  rm -r tmp_install tmp_magisk
-"'
+su -c "ASH_STANDALONE=1 BOOTMODE=true ZIPFILE=/sdcard/Download/"'"$MOD"'" OUTFD=1 /data/adb/magisk/busybox sh -c \"
+  echo "$ASH_STANDALONE"
+  echo "$ZIPFILE"
+  echo "$OUTFD"
+  echo "$BOOTODE"
+  . /data/adb/magisk/util_functions.sh
+  install_module
+\""'
     done)
 }
 
@@ -39,11 +36,11 @@ fix_perms() {
   (
     cd "$(dirname "$1")" && shift &&
       for DIR in "$@"; do
-        (cd data/"$DIR" && sudo find . ! -name . -prune) |
+        (cd data/"$DIR" && find . ! -name . -prune) |
           sed 's|^./\(.*\)|\1|g' |
           while IFS= read -r L; do
             APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
-            sudo chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
+            chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
           done
       done
   )
@@ -55,9 +52,9 @@ prepare_tarball() {
     cd "$(dirname "$1")" &&
       adb wait-for-device shell \
         'su -c "cat /data/system/packages.list"' >packages.list && {
-      sudo rm -r data
+      rm -r data
       echo "extracting tar '$1'" >&2
-      pv "$1" | sudo tar -x \
+      pv "$1" | gzip -d -c | tar -x \
         data/system/users \
         data/system_ce \
         data/system_de \
@@ -73,9 +70,9 @@ prepare_tarball() {
         data/misc/profiles
     } &&
       fix_perms data data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
-      sudo rm "$2" &&
+      rm "$2" &&
       echo "building tar '$2'" >&2 &&
-      sudo tar -c data | pv -s "$(du -sb data | cut -f1)" > "$2" 
+      tar -c data | pv -s "$(du -sb data | cut -f1)" | gzip -c > "$2" 
   )
 }
 
