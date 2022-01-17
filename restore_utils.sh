@@ -87,6 +87,7 @@ cleanup_postrestore() {
   "$DEBUG" && cat /tmp/receive_restore$$_*.stdout
   cat /tmp/receive_restore$$_*.stderr >&2
   rm /tmp/receive_restore$$_*.*
+  exit 0
 }
 
 restore() {

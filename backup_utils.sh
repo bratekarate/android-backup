@@ -24,6 +24,7 @@ cleanup_postbackup() {
   "$DEBUG" && cat /tmp/send_backup$$_*.stdout
   cat /tmp/send_backup$$_*.stderr >&2
   rm /tmp/send_backup$$_*.*
+  exit 0
 }
 
 backup() {

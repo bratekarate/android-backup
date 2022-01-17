@@ -1,10 +1,9 @@
 #!/bin/sh
 
-trap exit QUIT INT HUP TERM
-trap 'pkill -f "adb wait-for-device shell su -c"' EXIT
-
+  DATE=${1:-$(date +%F)}
+  
   # TODO: only works when executed from date folder
-  cd /media/storage_ssd2/honor9_backups/"$1"/ || exit
+  cd /media/storage_ssd2/honor9_backups/"$DATE" || exit
 
 . restore_utils &&
   install_apks apks &&
@@ -26,12 +25,7 @@ trap 'pkill -f "adb wait-for-device shell su -c"' EXIT
   echo starting receive job
   [ "$EX" -eq 0 ] || exit
   echo "EX is $EX"
-  . restore_utils && receive_restore_backup >tar.log 2>&1 &
-
-echo restore after 5 sec
-sleep 5
-
-. restore_utils && send_restore_backup data_restore.tar.gz &&
+  restore data_restore.tar.gz &&
   adb reboot &&
   echo waiting for device &&
   adb wait-for-device shell 'while [ -z "$(getprop sys.boot_completed)" ]; do sleep 1; done' &&
