@@ -71,6 +71,15 @@ prepare_tarball() {
       tar -c data | pv -s "$(du -sb data | cut -f1)" | gzip -c > "$2" 
   )
 }
+  
+exec_adb_shell() {
+  adb wait-for-device shell "su -c '$1'"
+}
+
+exec_adb_shell_fw() {
+  adb wait-for-device forward tcp:5555 tcp:5555
+  exec_adb_shell "$1"
+}
 
 cleanup_postrestore() {
   DEBUG=${1:-false}
@@ -97,34 +106,32 @@ restore() {
 # ADB: prepare to receive tar data
 receive_restore_fifo() {
   # setup port forwarding for netcat
-  adb wait-for-device forward tcp:5555 tcp:5555
-  adb wait-for-device shell 'su -c "
+  exec_adb_shell_fw '
 busybox rm /cache/fifo 2>/dev/null
 busybox mkfifo /cache/fifo
 cd / && busybox tar -xvf /cache/fifo
-"'
+'
 }
 
 receive_restore_nc() {
-  adb wait-for-device forward tcp:5555 tcp:5555
-  adb wait-for-device shell 'su -c "
+  exec_adb_shell_fw '
 killall nc 2>/dev/null
 tail -f /dev/null | busybox nc -lp 5555 >/cache/fifo
 busybox rm /cache/fifo 2>/dev/null
-"'
+'
 }
 
 # PC: send tar data (tested with bsd-netcat)
 send_restore() {
   pv "$1" | gzip -dc | nc -N localhost 5555 &&
-    adb shell 'su -c "busybox pkill -f \"busybox nc -lp 5555\""'
-    pkill -KILL -f 'nc -lp 5555'
+    exec_adb_shell 'busybox pkill -f "busybox nc -lp "'
+    pkill -KILL -f 'adb.*nc -lp '
 }
 
 # hide the navbar
 post_install_permissions() {
-  adb wait-for-device shell "
+  exec_adb_shell '
 settings put global navigationbar_is_min 1
 wm overscan 0,0,0,-140
-"
+'
 }
