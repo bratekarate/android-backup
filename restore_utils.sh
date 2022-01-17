@@ -1,5 +1,14 @@
 #!/bin/sh
 
+exec_adb_shell() {
+  adb wait-for-device shell "su -c '$1'"
+}
+
+exec_adb_shell_fw() {
+  adb wait-for-device forward tcp:5555 tcp:5555
+  exec_adb_shell "$1"
+}
+
 # install apks from backup. Let it run in the background with other shell or job management
 install_apks() {
   (
@@ -13,16 +22,27 @@ install_apks() {
 # install magisk manually and reboot
 install_magisk() {
   adb wait-for-device install "$1" &&
+  adb push "$2" /sdcard/Download &&
+  exec_adb_shell '
+  cd /sdcard/Download &&
+  unzip -o Magisk-v20.4.zip META-INF/com/google/android/update-binary &&
+  BOOTMODE=true sh META-INF/com/google/android/update-binary dummy 1 Magisk-v20.4.zip &&
+  rm -rf META-INF
+'
+}
+
+install_magisk_modules() {
     # TODO: prevent duplicate magisk installation. works for now.
-    (cd "$2" && for MOD in Magisk-v20.4.zip *.zip; do
+    (cd "$1"/magisk_mods && for MOD in *.zip; do
       adb wait-for-device push "$MOD" /sdcard/Download &&
-        adb wait-for-device shell '
-su -c "ASH_STANDALONE=1 BOOTMODE=true ZIPFILE=/sdcard/Download/"'"$MOD"'" OUTFD=1 busybox sh -c \"
+        exec_adb_shell 'ASH_STANDALONE=1 BOOTMODE=true ZIPFILE=/sdcard/Download/'"$MOD"' OUTFD=1 /data/adb/magisk/busybox sh -c "
   . /data/adb/magisk/util_functions.sh
   install_module
-\""'
+"'
     done)
 }
+
+
 
 # old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
 # TODO: DOES NOT WORK IF NO CHANNEL IS CONFIGURED!
@@ -72,15 +92,6 @@ prepare_tarball() {
   )
 }
   
-exec_adb_shell() {
-  adb wait-for-device shell "su -c '$1'"
-}
-
-exec_adb_shell_fw() {
-  adb wait-for-device forward tcp:5555 tcp:5555
-  exec_adb_shell "$1"
-}
-
 cleanup_postrestore() {
   DEBUG=${1:-false}
   cat /tmp/receive_restore$$*.pid | xargs kill -9 2>/dev/null
