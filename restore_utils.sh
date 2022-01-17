@@ -143,7 +143,7 @@ send_restore() {
 
 # hide the navbar
 post_install_permissions() {
-  exec_adb_shell '
+  adb wait-for-device shell '
 settings put global navigationbar_is_min 1
 wm overscan 0,0,0,-140
 '
