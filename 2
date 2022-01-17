@@ -74,9 +74,11 @@ prepare_tarball() {
 
 cleanup_postrestore() {
   DEBUG=${1:-false}
+  echo "DEBUG is $DEBUG" >&2
   cat /tmp/receive_restore$$*.pid | xargs kill -9 2>/dev/null
   "$DEBUG" && cat /tmp/receive_restore$$_*.stdout
   cat /tmp/receive_restore$$_*.stderr >&2
+  ls -al /tmp/receive_restore$$_*.*
   rm /tmp/receive_restore$$_*.*
 }
 
@@ -108,7 +110,7 @@ cd / && busybox tar -xvf /cache/fifo
 receive_restore_nc() {
   adb wait-for-device forward tcp:5555 tcp:5555
   adb wait-for-device shell 'su -c "
-killall nc 2>/dev/null
+killall nc
 tail -f /dev/null | busybox nc -lp 5555 >/cache/fifo
 busybox rm /cache/fifo 2>/dev/null
 "'

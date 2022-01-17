@@ -1,7 +1,7 @@
 #!/bin/sh
 
 trap exit QUIT INT HUP TERM
-trap 'pkill -f "adb wait-for-device shell su -c \"ASH_STANDALONE"' EXIT
+trap 'pkill -f "adb wait-for-device shell su -c"' EXIT
 
   # TODO: only works when executed from date folder
   cd /media/storage_ssd2/honor9_backups/"$1"/ || exit
