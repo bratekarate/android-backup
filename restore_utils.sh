@@ -22,27 +22,28 @@ install_apks() {
 # install magisk manually and reboot
 install_magisk() {
   adb wait-for-device install "$1" &&
-  adb push "$2" /sdcard/Download &&
+    unzip -o "$2" META-INF/com/google/android/update-binary
+  for FILE in "$2" META-INF/com/google/android/update-binary; do
+    adb push "$FILE" /sdcard/Download
+  done
+  rm -r META-INF
   exec_adb_shell '
   cd /sdcard/Download &&
-  unzip -o Magisk-v20.4.zip META-INF/com/google/android/update-binary &&
-  BOOTMODE=true sh META-INF/com/google/android/update-binary dummy 1 Magisk-v20.4.zip &&
-  rm -rf META-INF
+  BOOTMODE=true sh update-binary dummy 1 Magisk-v20.4.zip &&
+  rm -rf update-binary
 '
 }
 
 install_magisk_modules() {
-    # TODO: prevent duplicate magisk installation. works for now.
-    (cd "$1"/magisk_mods && for MOD in *.zip; do
-      adb wait-for-device push "$MOD" /sdcard/Download &&
-        exec_adb_shell 'ASH_STANDALONE=1 BOOTMODE=true ZIPFILE=/sdcard/Download/'"$MOD"' OUTFD=1 /data/adb/magisk/busybox sh -c "
+  # TODO: prevent duplicate magisk installation. works for now.
+  (cd "$1"/magisk_mods && for MOD in *.zip; do
+    adb wait-for-device push "$MOD" /sdcard/Download &&
+      exec_adb_shell 'ASH_STANDALONE=1 BOOTMODE=true ZIPFILE=/sdcard/Download/'"$MOD"' OUTFD=1 /data/adb/magisk/busybox sh -c "
   . /data/adb/magisk/util_functions.sh
   install_module
 "'
-    done)
+  done)
 }
-
-
 
 # old way: do phone initial setup, setup correct magisk channel and install magisk via net installer.
 # TODO: DOES NOT WORK IF NO CHANNEL IS CONFIGURED!
@@ -85,13 +86,13 @@ prepare_tarball() {
         data/misc/radio \
         data/misc/profiles
     } &&
-      fix_perms data data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
-      rm "$2" &&
+      echo fixing permissions >&2
+    fix_perms data data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
       echo "building tar '$2'" >&2 &&
-      tar -c data | pv -s "$(du -sb data | cut -f1)" | gzip -c > "$2" 
+      tar -c data | pv -s "$(du -sb data | cut -f1)" | gzip -c >"$2"
   )
 }
-  
+
 cleanup_postrestore() {
   DEBUG=${1:-false}
   cat /tmp/receive_restore$$*.pid | xargs kill -9 2>/dev/null
@@ -137,7 +138,7 @@ busybox rm /cache/fifo 2>/dev/null
 send_restore() {
   pv "$1" | gzip -dc | nc -N localhost 5555 &&
     exec_adb_shell 'busybox pkill -f "busybox nc -lp "'
-    pkill -KILL -f 'adb.*nc -lp '
+  pkill -KILL -f 'adb.*nc -lp '
 }
 
 # hide the navbar
