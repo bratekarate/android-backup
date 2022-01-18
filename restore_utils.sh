@@ -122,7 +122,11 @@ receive_restore_fifo() {
   exec_adb_shell_fw '
 busybox rm /cache/fifo 2>/dev/null
 busybox mkfifo /cache/fifo
-cd / && busybox tar -xvf /cache/fifo
+cd / && busybox tar -xvf /cache/fifo \
+  --exclude="data/data/im.vector.app/files/*" \
+  --exclude="data/data/im.vector.app/shared_prefs/im.vector.matrix.android.keys.xml" \
+  --exclude="data/data/dev.msfjarvis.aps/shared_prefs/http_proxy.xml" \
+  --exclude="data/data/dev.msfjarvis.aps/shared_prefs/git_operation.xml"
 '
 }
 
