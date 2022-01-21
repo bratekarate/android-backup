@@ -4,8 +4,11 @@ backup_apks() {
   mkdir -p apks &&
     (# shellcheck disable=2016
       cd apks &&
-        adb wait-for-device shell "pm list packages -f -3" |
-        sed 's/package://g;s/base.apk=\(.*\)$/base.apk \1.apk/g' | xargs -n2 sh -c 'adb pull "$1" &' _
+        adb wait-for-device shell '
+pm list packages -f -3 |
+  sed '\''s/package://g;s/\/base.apk=\(.*\)$/ \1/g'\'' |
+  xargs -n2 sh -c '\''find "$1"/*.apk -exec echo "{}" "$2" \;'\'' _' |
+        xargs -n2 sh -c 'mkdir -p "$2" && adb pull "$1" "$2" &' _
     )
 }
 

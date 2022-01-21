@@ -12,10 +12,8 @@ exec_adb_shell_fw() {
 # install apks from backup. Let it run in the background with other shell or job management
 install_apks() {
   (
-    cd "$1" && find . ! -name . -prune -name '*.apk' |
-      while IFS= read -r L; do
-        adb wait-for-device install "$L"
-      done
+    cd "$1" && find . ! -name . -prune -type d |
+      xargs -n1 sh -c 'adb wait-for-device install-multiple "$1"/*.apk' _
   )
 }
 
