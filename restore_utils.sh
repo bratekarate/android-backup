@@ -55,6 +55,7 @@ fix_perms() {
           sed 's|^./\(.*\)|\1|g' |
           while IFS= read -r L; do
             APPID=$(awk -v pkg="$L" '$0 ~ "^"pkg" " {print $2}' packages.list)
+            [ -z "$APPID" ] && rm -r data/"$DIR"/"$L" && continue
             chown -R "$APPID:$APPID" data/"$DIR"/"$L" || echo "$L"
           done
       done
@@ -75,14 +76,8 @@ prepare_tarball() {
         data/system_de \
         data/user_de \
         data/data \
-        data/media/0 \
-        data/misc/wifi \
-        data/misc/dhcp \
-        data/misc/vpn \
-        data/misc/bluetooth \
-        data/misc/bluedroid \
-        data/misc/radio \
-        data/misc/profiles
+        data/property \
+        data/media/0
     } &&
       echo fixing permissions >&2
     fix_perms data data user_de/0 misc/profiles/cur/0 misc/profiles/ref &&
