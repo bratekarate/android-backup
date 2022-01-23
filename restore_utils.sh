@@ -70,8 +70,8 @@ prepare_tarball() {
         'su -c "cat /data/system/packages.list"' >packages.list && {
       rm -r data
       echo "extracting tar '$1'" >&2
+      # data/system/users \
       pv "$1" | gzip -d -c | tar -x \
-        data/system/users \
         data/system_ce \
         data/system_de \
         data/user_de \
