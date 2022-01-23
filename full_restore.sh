@@ -22,8 +22,8 @@
   done &&
   echo "device connected" &&
   echo starting receive job &&
-  restore data_restore.tar.gz #&&
-  # adb reboot &&
+  restore data_restore.tar.gz &&
+  adb reboot #&&
   # echo waiting for device &&
   # adb wait-for-device shell 'while [ -z "$(getprop sys.boot_completed)" ]; do sleep 1; done' &&
   # while ! adb shell "su -c 'echo'" >/dev/null 2>&1; do
