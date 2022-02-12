@@ -7,5 +7,5 @@
   cd /media/storage_ssd2/honor9_backups/"$DATE"/ || exit
 
 . backup_utils &&
-  backup_apks &&
+  backup_apks true &&
   backup /data
